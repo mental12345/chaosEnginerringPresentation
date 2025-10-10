@@ -1,0 +1,33 @@
+{
+  "description": "ec2-instance-stop",
+  "roleArn": "arn:aws:iam::538412665789:role/FIS-ExecutionRole",
+  "targets": {
+    "EC2Instances": {
+      "resourceType": "aws:ec2:instance",
+      "selectionMode": "PERCENT(35)",
+      "resourceTags": {
+        "applications": "demo",
+        "chaos-ready": "true"
+      }
+    }
+  },
+  "actions": {
+    "StopInstances": {
+      "actionId": "aws:ec2:stop-instances",
+      "description": "Stop all EC2 instances tagged chaos-ready=true",
+      "parameters": {},
+      "targets": {
+        "Instances": "EC2Instances"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "none"
+    }
+  ],
+  "experimentOptions" :{
+    "emptyTargetResolutionMode": "fail"
+  }
+  
+}

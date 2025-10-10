@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StopInstances",
+        "ec2:StartInstances",
+        "ec2:RebootInstances",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:InvokeFunction",
+        "s3:PutBucketTagging",
+        "s3:GetBucketTagging",
+        "fis:ListExperimentTemplates",
+        "fis:StartExperiment",
+        "fis:StopExperiment"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
