@@ -1,35 +1,61 @@
-#! /bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-TEMPLATE=$1
+# ===========================================================
+# AWS Fault Injection Simulator (FIS) Experiment Runner
+# Starts an experiment from an existing FIS template.
+# Usage:
+#   ./start-experiment.sh <template-id>
+# ===========================================================
+
+TEMPLATE_ID=${1:-}
 REGION=${AWS_REGION:-"us-west-2"}
-if [ -z "$TEMPLATE" ] ; then
-  echo "Usage: $0 <template-file>"
+LOG_DIR="logs"
+TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+
+if [[ -z "$TEMPLATE_ID" ]]; then
+  echo "❌ Error: No template ID provided."
+  echo "Usage: $0 <template-id>"
   exit 1
 fi
 
-if [[ ! -f "$TEMPLATE" ]] ; then
-  echo "Template file $TEMPLATE does not exist"
-  exit 1
-fi
-
-echo "Deploying AWS FIS template $TEMPLATE"
-TEMPLATE_NAME=$(jq -r '.description // "Unnamed Template"' "$TEMPLATE")
-echo "Template name: $TEMPLATE_NAME"
-
-# Check if template already exists
-EXISTING_TEMPLATE_ID=$(aws fis list-experiment-templates \
+echo "🚀 Starting experiment from template: $TEMPLATE_ID (region: $REGION)"
+EXPERIMENT_ID=$(aws fis start-experiment \
   --region "$REGION" \
-  --query "experimentTemplates[?description=='$TEMPLATE_NAME'].id" \
+  --experiment-template-id "$TEMPLATE_ID" \
+  --query "experiment.id" \
   --output text)
-if [ -n "$EXISTING_TEMPLATE_ID" ] && [ "$EXISTING_TEMPLATE_ID" != "None" ] ; then
-  echo "Template already exists with ID $EXISTING_TEMPLATE_ID, updating it"
-  aws fis update-experiment-template \
-    --id "$EXISTING_TEMPLATE_ID" \
-    --cli-input-json "file://$TEMPLATE" >> /dev/null
-  echo "Template updated successfully"
-else 
-  echo "Template does not exist, creating it"
-  aws fis create-experiment-template \
-    --cli-input-json "file://$TEMPLATE" >> /dev/null
-  echo "Template created successfully"
-fi
+
+echo "✅ Experiment started: $EXPERIMENT_ID"
+
+# Optional: create logs directory if not exists
+mkdir -p "$LOG_DIR"
+LOG_FILE="${LOG_DIR}/experiment-${EXPERIMENT_ID}-${TIMESTAMP}.log"
+
+# Monitor experiment status
+echo "📡 Monitoring experiment status..."
+while true; do
+  STATUS=$(aws fis get-experiment \
+    --region "$REGION" \
+    --id "$EXPERIMENT_ID" \
+    --query "experiment.state.status" \
+    --output text)
+
+  echo "🕐 Current status: $STATUS" | tee -a "$LOG_FILE"
+
+  if [[ "$STATUS" == "completed" || "$STATUS" == "stopped" || "$STATUS" == "failed" ]]; then
+    echo "✅ Experiment finished with status: $STATUS"
+    break
+  fi
+
+  sleep 10
+done
+
+# Show summary details
+echo "📊 Experiment summary:"
+aws fis get-experiment \
+  --region "$REGION" \
+  --id "$EXPERIMENT_ID" \
+  --query "experiment | {id:id, startTime:startTime, endTime:endTime, state:state.status, actions:actions}" \
+  --output table | tee -a "$LOG_FILE"
+

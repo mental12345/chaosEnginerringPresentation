@@ -6,7 +6,7 @@
       "resourceType": "aws:ec2:instance",
       "selectionMode": "PERCENT(25)",
       "resourceTags": {
-        "applications": "demo",
+        "app": "demo",
         "chaos-ready": "true"
       }
     }
